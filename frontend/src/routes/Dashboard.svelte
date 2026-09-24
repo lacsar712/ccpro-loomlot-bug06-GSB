@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { link } from 'svelte-spa-router';
-  import { api } from '../lib/api.js';
+  import { api, VAT_STATUS_VALUE } from '../lib/api.js';
 
   let stats = null;
   let error = '';
@@ -32,18 +32,30 @@
       <div class="n">{stats.vatReadyCount}</div>
       <div class="l">就绪染缸</div>
     </div>
-    <div class="stat">
+    <!-- 染程中卡与染缸列表 ?status=dyeing 同源自后端同一字面量，点击即对照 -->
+    <a
+      class="stat stat-link"
+      href={`/vats?status=${VAT_STATUS_VALUE.DYEING}`}
+      use:link
+      title="查看染程中染缸列表"
+    >
       <div class="n">{stats.vatDyeingCount}</div>
-      <div class="l">染色中</div>
-    </div>
+      <div class="l">染程中染缸 <span class="go">对照 →</span></div>
+    </a>
     <div class="stat">
       <div class="n">{stats.lotsLast7d}</div>
       <div class="l">近 7 日染程</div>
     </div>
-    <div class="stat">
-      <div class="n">{stats.checksLast24h}</div>
-      <div class="l">近 24 时抽检</div>
-    </div>
+    <!-- 今日抽检卡与抽检列表 ?date=today 同源东八区自然日，点击即对照 -->
+    <a
+      class="stat stat-link"
+      href="/checks?date=today"
+      use:link
+      title="查看今日（东八区自然日）抽检列表"
+    >
+      <div class="n">{stats.checksTodayCount}</div>
+      <div class="l">今日抽检 <span class="go">对照 →</span></div>
+    </a>
   </div>
 {/if}
 
@@ -58,3 +70,23 @@
     <a class="btn ghost" href="/checks" use:link>色牢度抽检</a>
   </div>
 </div>
+
+<style>
+  .stat-link {
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+    transition: filter 0.15s ease, border-color 0.15s ease;
+  }
+
+  .stat-link:hover {
+    filter: brightness(1.15);
+    border-color: var(--indigo-bright);
+  }
+
+  .go {
+    font-size: 0.7rem;
+    color: var(--indigo-bright);
+    opacity: 0.85;
+  }
+</style>

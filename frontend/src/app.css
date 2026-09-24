@@ -223,3 +223,25 @@ th {
   gap: 0.4rem;
   flex-wrap: wrap;
 }
+
+.filter-label {
+  font-size: 0.8rem;
+  color: var(--indigo-mist);
+}
+
+.btn.chip.on {
+  border-color: var(--indigo-bright);
+  color: #fff;
+  background: rgba(107, 92, 231, 0.25);
+  text-decoration: none;
+}
+
+.btn.chip {
+  text-decoration: none;
+}
+
+.count-hint {
+  font-size: 0.78rem;
+  color: var(--indigo-mist);
+  margin-left: auto;
+}

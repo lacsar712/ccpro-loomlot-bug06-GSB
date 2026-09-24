@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.constants import VAT_ALL_STATUSES, VAT_STATUS_DRAIN
 from app.database import get_db
 from app.models.dye_house import DyeHouse
 from app.models.user import User
@@ -24,8 +25,10 @@ def list_vats(
     q = db.query(Vat)
     if dye_house_id is not None:
         q = q.filter(Vat.dye_house_id == dye_house_id)
-    # 列表过滤用正确字面量 dyeing（与看板不一致）
+    # 看板「染程中」卡使用同一字面量常量（?status=dyeing），卡数即本过滤的行数。
     if status_filter:
+        if status_filter not in VAT_ALL_STATUSES:
+            raise HTTPException(status_code=400, detail="未知染缸状态")
         q = q.filter(Vat.status == status_filter)
     return q.order_by(Vat.id).all()
 
@@ -103,9 +106,9 @@ def drain_vat(
     item = db.query(Vat).filter(Vat.id == vat_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="染缸不存在")
-    if item.status == "drain":
+    if item.status == VAT_STATUS_DRAIN:
         raise HTTPException(status_code=400, detail="染缸已在排液状态")
-    item.status = "drain"
+    item.status = VAT_STATUS_DRAIN
     db.commit()
     db.refresh(item)
     return item

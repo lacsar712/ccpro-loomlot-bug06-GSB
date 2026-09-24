@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.constants import cn_day_window
 from app.database import get_db
 from app.models.dye_lot import DyeLot
 from app.models.fastness_check import FastnessCheck
@@ -16,12 +17,20 @@ router = APIRouter(prefix="/api/fastness-checks", tags=["fastness-checks"])
 @router.get("", response_model=List[FastnessCheckOut])
 def list_checks(
     dye_lot_id: Optional[int] = Query(None, alias="dyeLotId"),
+    date: Optional[str] = Query(None, description="today=东八区自然日"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
     q = db.query(FastnessCheck)
     if dye_lot_id is not None:
         q = q.filter(FastnessCheck.dye_lot_id == dye_lot_id)
+    # 与看板「今日抽检」卡共用东八区自然日窗口，保证卡数 == 过滤行数。
+    if date == "today":
+        day_start, day_end = cn_day_window()
+        q = q.filter(
+            FastnessCheck.checked_at >= day_start,
+            FastnessCheck.checked_at < day_end,
+        )
     return q.order_by(FastnessCheck.id.desc()).all()
 
 

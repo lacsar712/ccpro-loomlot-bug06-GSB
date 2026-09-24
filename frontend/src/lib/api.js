@@ -48,8 +48,14 @@ export function fromLocalInput(val) {
   return new Date(val).toISOString();
 }
 
+export const VAT_STATUS_VALUE = {
+  READY: 'ready',
+  DYEING: 'dyeing',
+  DRAIN: 'drain',
+};
+
 export const VAT_STATUS = {
-  ready: '就绪',
-  dyeing: '染色中',
-  drain: '排液',
+  [VAT_STATUS_VALUE.READY]: '就绪',
+  [VAT_STATUS_VALUE.DYEING]: '染色中',
+  [VAT_STATUS_VALUE.DRAIN]: '排液',
 };

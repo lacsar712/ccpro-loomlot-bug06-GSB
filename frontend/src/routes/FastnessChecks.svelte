@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { link, querystring } from 'svelte-spa-router';
   import { api, toLocalInput, fromLocalInput } from '../lib/api.js';
 
   let lots = [];
@@ -15,17 +15,25 @@
   };
   let editing = null;
 
+  // 过滤状态来自 URL query（与看板「今日抽检」卡跳转同一参数）。
+  $: dateFilter = new URLSearchParams($querystring || '').get('date');
+
   async function load() {
     error = '';
     try {
-      [lots, rows] = await Promise.all([api('/dye-lots'), api('/fastness-checks')]);
+      const qs = dateFilter ? `?date=${encodeURIComponent(dateFilter)}` : '';
+      [lots, rows] = await Promise.all([api('/dye-lots'), api(`/fastness-checks${qs}`)]);
       if (!form.dyeLotId && lots.length) form.dyeLotId = String(lots[0].id);
     } catch (e) {
       error = e.message;
     }
   }
 
-  onMount(load);
+  // 看板卡片跳转或切换筛选时按同一口径重新拉取（首次也会执行）。
+  $: {
+    void dateFilter;
+    load();
+  }
 
   function lotLabel(id) {
     const lot = lots.find((x) => x.id === id);
@@ -113,6 +121,26 @@
 </div>
 
 <div class="panel">
+  <div class="toolbar">
+    <span class="filter-label">日期筛选</span>
+    <a
+      class="btn small ghost chip"
+      class:on={!dateFilter}
+      href="/checks"
+      use:link
+    >
+      全部
+    </a>
+    <a
+      class="btn small ghost chip"
+      class:on={dateFilter === 'today'}
+      href="/checks?date=today"
+      use:link
+    >
+      今日（东八区自然日）
+    </a>
+    <span class="count-hint">当前 {rows.length} 条</span>
+  </div>
   <table>
     <thead>
       <tr>

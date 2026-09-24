@@ -1,6 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
-  import { api, VAT_STATUS } from '../lib/api.js';
+  import { link, querystring } from 'svelte-spa-router';
+  import { api, VAT_STATUS, VAT_STATUS_VALUE } from '../lib/api.js';
 
   let houses = [];
   let rows = [];
@@ -10,21 +10,36 @@
     vatCode: '',
     fiberType: '棉',
     capacityL: 500,
-    status: 'ready',
+    status: VAT_STATUS_VALUE.READY,
   };
   let editing = null;
+
+  // 列表过滤状态来自 URL query（与看板卡片跳转同一参数、同一字面量常量）。
+  $: statusFilter = new URLSearchParams($querystring || '').get('status');
+
+  const FILTERS = [
+    { value: '', label: '全部' },
+    { value: VAT_STATUS_VALUE.READY, label: VAT_STATUS[VAT_STATUS_VALUE.READY] },
+    { value: VAT_STATUS_VALUE.DYEING, label: VAT_STATUS[VAT_STATUS_VALUE.DYEING] },
+    { value: VAT_STATUS_VALUE.DRAIN, label: VAT_STATUS[VAT_STATUS_VALUE.DRAIN] },
+  ];
 
   async function load() {
     error = '';
     try {
-      [houses, rows] = await Promise.all([api('/dye-houses'), api('/vats')]);
+      const qs = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
+      [houses, rows] = await Promise.all([api('/dye-houses'), api(`/vats${qs}`)]);
       if (!form.dyeHouseId && houses.length) form.dyeHouseId = String(houses[0].id);
     } catch (e) {
       error = e.message;
     }
   }
 
-  onMount(load);
+  // 看板卡片跳转或切换筛选时按同一口径重新拉取（首次也会执行）。
+  $: {
+    void statusFilter;
+    load();
+  }
 
   function houseName(id) {
     return houses.find((h) => h.id === id)?.name || id;
@@ -51,7 +66,7 @@
         vatCode: '',
         fiberType: '棉',
         capacityL: 500,
-        status: 'ready',
+        status: VAT_STATUS_VALUE.READY,
       };
       await load();
     } catch (e) {
@@ -111,9 +126,9 @@
     <label
       >状态
       <select bind:value={form.status}>
-        <option value="ready">就绪</option>
-        <option value="dyeing">染色中</option>
-        <option value="drain">排液</option>
+        {#each FILTERS.filter((f) => f.value) as f}
+          <option value={f.value}>{f.label}</option>
+        {/each}
       </select>
     </label>
   </div>
@@ -133,6 +148,20 @@
 </div>
 
 <div class="panel">
+  <div class="toolbar">
+    <span class="filter-label">状态筛选</span>
+    {#each FILTERS as f}
+      <a
+        class="btn small ghost chip"
+        class:on={statusFilter === f.value || (!statusFilter && f.value === '')}
+        href={f.value ? `/vats?status=${f.value}` : '/vats'}
+        use:link
+      >
+        {f.label}
+      </a>
+    {/each}
+    <span class="count-hint">当前 {rows.length} 缸{statusFilter ? `（${VAT_STATUS[statusFilter] || statusFilter}）` : ''}</span>
+  </div>
   <table>
     <thead>
       <tr>
@@ -155,7 +184,7 @@
           <td>{row.capacityL}</td>
           <td><span class="badge {row.status}">{VAT_STATUS[row.status] || row.status}</span></td>
           <td class="row-actions">
-            {#if row.status !== 'drain'}
+            {#if row.status !== VAT_STATUS_VALUE.DRAIN}
               <button class="btn ghost small" type="button" on:click={() => drain(row.id)}>完成排液</button>
             {/if}
             <button class="btn ghost small" type="button" on:click={() => startEdit(row)}>编辑</button>
