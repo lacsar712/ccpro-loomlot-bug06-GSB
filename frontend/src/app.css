@@ -218,6 +218,21 @@ th {
   margin-bottom: 0.85rem;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.83rem;
+  color: var(--indigo-mist);
+  border: 1px solid rgba(107, 92, 231, 0.45);
+  background: rgba(107, 92, 231, 0.12);
+  border-radius: 3px;
+}
+
 .row-actions {
   display: flex;
   gap: 0.4rem;

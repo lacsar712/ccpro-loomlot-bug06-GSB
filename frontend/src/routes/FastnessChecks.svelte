@@ -1,6 +1,12 @@
 <script>
-  import { onMount } from 'svelte';
-  import { api, toLocalInput, fromLocalInput } from '../lib/api.js';
+  import { link, location } from 'svelte-spa-router';
+  import {
+    api,
+    toLocalInput,
+    fromLocalInput,
+    queryParam,
+    CHECKS_QUERY_PERIOD_TODAY,
+  } from '../lib/api.js';
 
   let lots = [];
   let rows = [];
@@ -15,17 +21,28 @@
   };
   let editing = null;
 
+  // 列表过滤直接读看板卡跳转写入的同一个 query 字面量（?period=today，东八区自然日）
+  $: period = queryParam($location, 'period');
+  $: todayOnly = period === CHECKS_QUERY_PERIOD_TODAY;
+
   async function load() {
     error = '';
     try {
-      [lots, rows] = await Promise.all([api('/dye-lots'), api('/fastness-checks')]);
+      const qs = todayOnly
+        ? `?period=${encodeURIComponent(CHECKS_QUERY_PERIOD_TODAY)}`
+        : '';
+      [lots, rows] = await Promise.all([api('/dye-lots'), api(`/fastness-checks${qs}`)]);
       if (!form.dyeLotId && lots.length) form.dyeLotId = String(lots[0].id);
     } catch (e) {
       error = e.message;
     }
   }
 
-  onMount(load);
+  // 初始加载 + 看板卡跳入 / 清除过滤时随 query 重新拉取
+  $: {
+    todayOnly;
+    load();
+  }
 
   function lotLabel(id) {
     const lot = lots.find((x) => x.id === id);
@@ -86,6 +103,13 @@
 
 <h1 class="page-title">色牢度抽检</h1>
 <p class="page-sub">耐洗 1–5 级；摩擦牢度须大于 0；记录检测温度。</p>
+
+{#if todayOnly}
+  <div class="filter-bar">
+    <span>列表过滤：<strong>近一天（东八区今日 00:00 起）</strong>（与看板「近一天抽检」卡同源）</span>
+    <a class="btn ghost small" href="/checks" use:link>清除过滤</a>
+  </div>
+{/if}
 
 <div class="panel" style="margin-bottom:1rem;">
   <div class="form-grid">

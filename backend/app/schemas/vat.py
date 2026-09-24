@@ -33,4 +33,6 @@ class VatOut(BaseModel):
     vat_code: str = Field(serialization_alias="vatCode")
     fiber_type: str = Field(serialization_alias="fiberType")
     capacity_l: float = Field(serialization_alias="capacityL")
-    status: VatStatus
+    # 输出容忍历史脏字面量（如旧版误写的 dyeing_active）：全量列表要能把它显示出来，
+    # 以便暴露与 ?status=dyeing 的口径差；写入侧 VatCreate/VatUpdate 仍受 VatStatus 严格约束。
+    status: str

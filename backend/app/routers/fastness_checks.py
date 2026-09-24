@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.constants import CHECKS_PERIOD_TODAY
 from app.database import get_db
 from app.models.dye_lot import DyeLot
 from app.models.fastness_check import FastnessCheck
 from app.models.user import User
 from app.schemas.fastness_check import FastnessCheckCreate, FastnessCheckUpdate, FastnessCheckOut
+from app.timeutil import cn_today_window
 
 router = APIRouter(prefix="/api/fastness-checks", tags=["fastness-checks"])
 
@@ -16,13 +18,23 @@ router = APIRouter(prefix="/api/fastness-checks", tags=["fastness-checks"])
 @router.get("", response_model=List[FastnessCheckOut])
 def list_checks(
     dye_lot_id: Optional[int] = Query(None, alias="dyeLotId"),
+    # 看板「近一天」卡跳转即 ?period=today：东八区自然日，与 dashboard 计数同源
+    period: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
+    if period is not None and period != CHECKS_PERIOD_TODAY:
+        raise HTTPException(
+            status_code=400,
+            detail=f"非法时间口径「{period}」，仅支持：{CHECKS_PERIOD_TODAY}",
+        )
     q = db.query(FastnessCheck)
     if dye_lot_id is not None:
         q = q.filter(FastnessCheck.dye_lot_id == dye_lot_id)
-    return q.order_by(FastnessCheck.id.desc()).all()
+    if period == CHECKS_PERIOD_TODAY:
+        today_start, _ = cn_today_window()
+        q = q.filter(FastnessCheck.checked_at >= today_start)
+    return q.order_by(FastnessCheck.checked_at.desc(), FastnessCheck.id.desc()).all()
 
 
 @router.post("", response_model=FastnessCheckOut, status_code=status.HTTP_201_CREATED)

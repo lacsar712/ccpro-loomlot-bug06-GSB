@@ -53,3 +53,13 @@ export const VAT_STATUS = {
   dyeing: '染色中',
   drain: '排液',
 };
+
+// 看板卡片跳转与列表过滤共用的 query 字面量（对应后端 app/constants.py，勿另写一套）
+export const VAT_QUERY_STATUS_DYEING = 'dyeing';
+export const CHECKS_QUERY_PERIOD_TODAY = 'today';
+
+// 从 svelte-spa-router 的 $location 中取 query 参数
+export function queryParam($location, name) {
+  const qs = $location.includes('?') ? $location.slice($location.indexOf('?') + 1) : '';
+  return new URLSearchParams(qs).get(name) || '';
+}

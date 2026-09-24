@@ -1,6 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
-  import { api, VAT_STATUS } from '../lib/api.js';
+  import { link, location } from 'svelte-spa-router';
+  import { api, VAT_STATUS, queryParam } from '../lib/api.js';
 
   let houses = [];
   let rows = [];
@@ -14,17 +14,25 @@
   };
   let editing = null;
 
+  // 列表过滤直接读看板卡跳转写入的同一个 query 字面量（?status=dyeing）
+  $: statusFilter = queryParam($location, 'status');
+
   async function load() {
     error = '';
     try {
-      [houses, rows] = await Promise.all([api('/dye-houses'), api('/vats')]);
+      const qs = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
+      [houses, rows] = await Promise.all([api('/dye-houses'), api(`/vats${qs}`)]);
       if (!form.dyeHouseId && houses.length) form.dyeHouseId = String(houses[0].id);
     } catch (e) {
       error = e.message;
     }
   }
 
-  onMount(load);
+  // 初始加载 + 看板卡跳入 / 清除过滤时随 query 重新拉取
+  $: {
+    statusFilter;
+    load();
+  }
 
   function houseName(id) {
     return houses.find((h) => h.id === id)?.name || id;
@@ -94,6 +102,13 @@
 
 <h1 class="page-title">染缸</h1>
 <p class="page-sub">状态：就绪 / 染色中 / 排液。容量单位为升。</p>
+
+{#if statusFilter}
+  <div class="filter-bar">
+    <span>列表过滤：<strong>{VAT_STATUS[statusFilter] || statusFilter}</strong>（与看板「染色中」卡同源）</span>
+    <a class="btn ghost small" href="/vats" use:link>清除过滤</a>
+  </div>
+{/if}
 
 <div class="panel" style="margin-bottom:1rem;">
   <div class="form-grid">

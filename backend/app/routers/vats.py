@@ -5,6 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.constants import (
+    VAT_STATUSES,
+    VAT_STATUS_DRAIN,
+)
 from app.database import get_db
 from app.models.dye_house import DyeHouse
 from app.models.user import User
@@ -17,14 +21,19 @@ router = APIRouter(prefix="/api/vats", tags=["vats"])
 @router.get("", response_model=List[VatOut])
 def list_vats(
     dye_house_id: Optional[int] = Query(None, alias="dyeHouseId"),
+    # 看板「染程中」卡跳转即 ?status=dyeing，字面量经 constants 与计数同源
     status_filter: Optional[str] = Query(None, alias="status"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
+    if status_filter is not None and status_filter not in VAT_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"非法染缸状态「{status_filter}」，仅支持：{', '.join(VAT_STATUSES)}",
+        )
     q = db.query(Vat)
     if dye_house_id is not None:
         q = q.filter(Vat.dye_house_id == dye_house_id)
-    # 列表过滤用正确字面量 dyeing（与看板不一致）
     if status_filter:
         q = q.filter(Vat.status == status_filter)
     return q.order_by(Vat.id).all()
@@ -103,9 +112,9 @@ def drain_vat(
     item = db.query(Vat).filter(Vat.id == vat_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="染缸不存在")
-    if item.status == "drain":
+    if item.status == VAT_STATUS_DRAIN:
         raise HTTPException(status_code=400, detail="染缸已在排液状态")
-    item.status = "drain"
+    item.status = VAT_STATUS_DRAIN
     db.commit()
     db.refresh(item)
     return item

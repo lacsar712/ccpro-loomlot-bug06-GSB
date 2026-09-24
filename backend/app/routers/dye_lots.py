@@ -5,6 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.constants import (
+    VAT_STATUSES_OPEN_TO_LOT,
+    VAT_STATUS_DYEING,
+)
 from app.database import get_db
 from app.models.dye_lot import DyeLot
 from app.models.user import User
@@ -12,8 +16,6 @@ from app.models.vat import Vat
 from app.schemas.dye_lot import DyeLotCreate, DyeLotUpdate, DyeLotOut
 
 router = APIRouter(prefix="/api/dye-lots", tags=["dye-lots"])
-
-ALLOWED_VAT_STATUSES = {"ready", "dyeing"}
 
 
 @router.get("", response_model=List[DyeLotOut])
@@ -37,7 +39,7 @@ def create_dye_lot(
     vat = db.query(Vat).filter(Vat.id == payload.vat_id).first()
     if not vat:
         raise HTTPException(status_code=400, detail="染缸不存在")
-    if vat.status not in ALLOWED_VAT_STATUSES:
+    if vat.status not in VAT_STATUSES_OPEN_TO_LOT:
         raise HTTPException(
             status_code=409,
             detail=f"染缸状态为「{vat.status}」，仅 ready 或 dyeing 时可新建染程",
@@ -49,7 +51,7 @@ def create_dye_lot(
         started_at=payload.started_at,
         operator_name=payload.operator_name,
     )
-    vat.status = "dyeing"
+    vat.status = VAT_STATUS_DYEING
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -83,12 +85,12 @@ def update_dye_lot(
         vat = db.query(Vat).filter(Vat.id == data["vat_id"]).first()
         if not vat:
             raise HTTPException(status_code=400, detail="染缸不存在")
-        if vat.status not in ALLOWED_VAT_STATUSES:
+        if vat.status not in VAT_STATUSES_OPEN_TO_LOT:
             raise HTTPException(
                 status_code=409,
                 detail=f"目标染缸状态为「{vat.status}」，无法改挂染程",
             )
-        vat.status = "dyeing"
+        vat.status = VAT_STATUS_DYEING
     for k, v in data.items():
         setattr(item, k, v)
     db.commit()
